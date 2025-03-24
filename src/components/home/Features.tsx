@@ -6,7 +6,7 @@ import {
   PenTool, 
   Clock, 
   VolumeX, 
-  VolumeUp, 
+  Volume, 
   ArrowRight, 
   ScanText, 
   Mic,
@@ -45,7 +45,7 @@ const Features = () => {
     {
       title: "Sound Environment",
       description: "Customizable audio environments to create the perfect study atmosphere.",
-      icon: <VolumeUp className="h-10 w-10 text-primary p-2 bg-primary/10 rounded-xl" />,
+      icon: <Volume className="h-10 w-10 text-primary p-2 bg-primary/10 rounded-xl" />,
       link: "/tools"
     },
     {

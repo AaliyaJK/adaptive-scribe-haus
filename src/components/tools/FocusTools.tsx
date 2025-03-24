@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Clock, 
@@ -16,7 +15,7 @@ import {
   Coffee,
   Waves,
   Music,
-  Birds
+  Bird
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -37,7 +36,7 @@ const soundOptions: SoundOption[] = [
   { id: 'cafe', name: 'Café', icon: <Coffee className="h-5 w-5" /> },
   { id: 'waves', name: 'Ocean Waves', icon: <Waves className="h-5 w-5" /> },
   { id: 'lofi', name: 'Lo-Fi Music', icon: <Music className="h-5 w-5" /> },
-  { id: 'nature', name: 'Nature', icon: <Birds className="h-5 w-5" /> },
+  { id: 'nature', name: 'Nature', icon: <Bird className="h-5 w-5" /> },
 ];
 
 const FocusTools = () => {
