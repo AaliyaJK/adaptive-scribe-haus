@@ -1,32 +1,37 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Cat, 
+  Dog,
+  Rabbit,
   MessageSquare, 
   Heart, 
   Send, 
-  XCircle, 
   Maximize2, 
   Minimize2, 
   ChevronUp,
   ChevronDown,
   Sparkles,
-  PlusCircle,
-  Image
+  Volume,
+  Mic,
+  Gift,
+  Hand
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { toast } from '@/hooks/use-toast';
 
 type Companion = {
   id: string;
   name: string;
-  type: string;
+  type: 'cat' | 'dog' | 'rabbit';
   personality: string;
-  avatar: string;
+  color: string;
   description: string;
+  sounds: string[];
+  actions: string[];
 };
 
 type Message = {
@@ -40,26 +45,32 @@ const companions: Companion[] = [
   {
     id: 'luna',
     name: 'Luna',
-    type: 'Cat',
+    type: 'cat',
     personality: 'Calm & Patient',
-    avatar: '/placeholder.svg',
-    description: 'Luna is a calming presence who helps with stress management and provides gentle guidance.'
+    color: 'purple',
+    description: 'Luna is a calming presence who helps with stress management and provides gentle guidance.',
+    sounds: ['meow', 'purr', 'hiss'],
+    actions: ['pet', 'play', 'feed', 'sleep']
   },
   {
-    id: 'spark',
-    name: 'Spark',
-    type: 'Fox',
+    id: 'buddy',
+    name: 'Buddy',
+    type: 'dog',
     personality: 'Energetic & Motivating',
-    avatar: '/placeholder.svg',
-    description: 'Spark brings energy and motivation when you need a boost to stay engaged with your learning.'
+    color: 'orange',
+    description: 'Buddy brings energy and motivation when you need a boost to stay engaged with your learning.',
+    sounds: ['woof', 'bark', 'pant'],
+    actions: ['pet', 'play', 'feed', 'sleep']
   },
   {
-    id: 'echo',
-    name: 'Echo',
-    type: 'Owl',
+    id: 'milo',
+    name: 'Milo',
+    type: 'rabbit',
     personality: 'Wise & Thoughtful',
-    avatar: '/placeholder.svg',
-    description: 'Echo offers analytical insights and helps break down complex topics into manageable pieces.'
+    color: 'green',
+    description: 'Milo offers analytical insights and helps break down complex topics into manageable pieces.',
+    sounds: ['squeak', 'nibble', 'thump'],
+    actions: ['pet', 'play', 'feed', 'sleep']
   }
 ];
 
@@ -67,7 +78,7 @@ const initialMessages: Message[] = [
   {
     id: '1',
     sender: 'companion',
-    text: "Hi there! I'm Luna, your learning companion. How can I help you today?",
+    text: "Hi there! I'm Luna. Touch me, talk to me, or give me treats! I'm here to keep you company!",
     timestamp: new Date()
   }
 ];
@@ -78,7 +89,15 @@ const VirtualCompanion = () => {
   const [selectedCompanion, setSelectedCompanion] = useState<Companion>(companions[0]);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [newMessage, setNewMessage] = useState('');
-  const [companionStatus, setCompanionStatus] = useState({ mood: 'happy', energy: 100 });
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [action, setAction] = useState<string | null>(null);
+  const [happiness, setHappiness] = useState(70);
+  const [energy, setEnergy] = useState(80);
+  const [repeating, setRepeating] = useState(false);
+  
+  const companionRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const toggleExpanded = () => {
     setExpanded(!expanded);
@@ -87,6 +106,151 @@ const VirtualCompanion = () => {
   
   const toggleMinimized = () => {
     setMinimized(!minimized);
+  };
+
+  // Scroll to bottom of messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Add random idle animations
+  useEffect(() => {
+    const idleInterval = setInterval(() => {
+      if (!action && Math.random() > 0.7) {
+        const idleActions = ['blink', 'look', 'sniff'];
+        const randomIdle = idleActions[Math.floor(Math.random() * idleActions.length)];
+        setAction(randomIdle);
+        setTimeout(() => setAction(null), 1000);
+      }
+    }, 3000);
+    
+    return () => clearInterval(idleInterval);
+  }, [action]);
+
+  // Pet the companion
+  const handlePet = () => {
+    if (action) return; // Don't interrupt current action
+    
+    setAction('happy');
+    playSound('happy');
+    setHappiness(prev => Math.min(prev + 10, 100));
+    
+    // Return to idle after animation
+    setTimeout(() => {
+      setAction(null);
+      
+      // Sometimes respond with a message
+      if (Math.random() > 0.5) {
+        const responses = [
+          "Purrrr! That feels nice!",
+          "I love when you pet me!",
+          "You're so kind! I feel better already!",
+          "Ahh, that's the spot!",
+          "We're friends now! How can I help you?"
+        ];
+        
+        addCompanionMessage(responses[Math.floor(Math.random() * responses.length)]);
+      }
+    }, 2000);
+  };
+
+  // Play with companion
+  const handlePlay = () => {
+    if (action) return; // Don't interrupt current action
+    
+    setAction('play');
+    playSound('excited');
+    setHappiness(prev => Math.min(prev + 15, 100));
+    setEnergy(prev => Math.max(prev - 10, 20));
+    
+    // Return to idle after animation
+    setTimeout(() => {
+      setAction(null);
+      addCompanionMessage("That was fun! Let's play again later!");
+    }, 3000);
+  };
+
+  // Feed the companion
+  const handleFeed = () => {
+    if (action) return; // Don't interrupt current action
+    
+    setAction('eat');
+    playSound('happy');
+    setEnergy(prev => Math.min(prev + 20, 100));
+    
+    // Return to idle after animation
+    setTimeout(() => {
+      setAction(null);
+      addCompanionMessage("Yum! Thank you for the treat!");
+    }, 2500);
+  };
+
+  // Make companion repeat what user says
+  const handleRepeat = () => {
+    setRepeating(!repeating);
+    
+    if (!repeating) {
+      toast({
+        title: "Echo Mode On",
+        description: `${selectedCompanion.name} will repeat what you say!`,
+        duration: 2000,
+      });
+    } else {
+      toast({
+        title: "Echo Mode Off",
+        description: `${selectedCompanion.name} won't repeat you anymore.`,
+        duration: 2000,
+      });
+    }
+  };
+
+  // Play companion sounds
+  const playSound = (type: string) => {
+    // In a real implementation, this would play actual audio
+    console.log(`Playing ${type} sound`);
+    
+    // For demonstration, show a toast
+    let sound = "";
+    
+    if (type === 'happy') {
+      if (selectedCompanion.type === 'cat') sound = "Purrrr!";
+      if (selectedCompanion.type === 'dog') sound = "Woof woof!";
+      if (selectedCompanion.type === 'rabbit') sound = "Squeak!";
+    } else if (type === 'excited') {
+      if (selectedCompanion.type === 'cat') sound = "Meow meow!";
+      if (selectedCompanion.type === 'dog') sound = "Bark bark!";
+      if (selectedCompanion.type === 'rabbit') sound = "Thump thump!";
+    } else {
+      sound = selectedCompanion.sounds[Math.floor(Math.random() * selectedCompanion.sounds.length)] + "!";
+    }
+    
+    toast({
+      title: `${selectedCompanion.name} says:`,
+      description: sound,
+      duration: 1500,
+    });
+  };
+
+  // Add a message from the companion
+  const addCompanionMessage = (text: string) => {
+    setIsSpeaking(true);
+    setAction('talk');
+    
+    // Add the message
+    const companionMessage: Message = {
+      id: Date.now().toString(),
+      sender: 'companion',
+      text: text,
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, companionMessage]);
+    
+    // Stop speaking after a moment
+    setTimeout(() => {
+      setIsSpeaking(false);
+      setAction(null);
+    }, 2000);
   };
   
   const handleSendMessage = (e: React.FormEvent) => {
@@ -102,60 +266,183 @@ const VirtualCompanion = () => {
     };
     
     setMessages(prev => [...prev, userMessage]);
+    
+    // Store message content before clearing input
+    const messageContent = newMessage;
     setNewMessage('');
     
-    // Simulate companion response
+    // Respond differently based on message content
     setTimeout(() => {
-      let responseText = '';
-      
-      if (newMessage.toLowerCase().includes('help') || newMessage.toLowerCase().includes('stuck')) {
-        responseText = `I can see you might be feeling stuck. Remember to break down the problem into smaller parts. Would you like me to suggest a different approach?`;
-      } else if (newMessage.toLowerCase().includes('tired') || newMessage.toLowerCase().includes('break')) {
-        responseText = `It's important to take breaks! How about a 5-minute mindfulness exercise to refresh your mind?`;
-      } else if (newMessage.toLowerCase().includes('anxious') || newMessage.toLowerCase().includes('stressed')) {
-        responseText = `I'm here for you. Let's take a deep breath together. Would you like to try a quick calming exercise?`;
-      } else {
-        responseText = `I'm here to support your learning journey. Is there something specific you'd like help with?`;
+      // If in repeat mode, just echo back
+      if (repeating) {
+        addCompanionMessage(messageContent);
+        return;
       }
       
-      const companionMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: 'companion',
-        text: responseText,
-        timestamp: new Date()
-      };
+      // Check for specific keywords
+      const lowerMessage = messageContent.toLowerCase();
       
-      setMessages(prev => [...prev, companionMessage]);
+      if (lowerMessage.includes('pet') || lowerMessage.includes('stroke') || lowerMessage.includes('touch')) {
+        handlePet();
+      } else if (lowerMessage.includes('play') || lowerMessage.includes('game') || lowerMessage.includes('fun')) {
+        handlePlay();
+      } else if (lowerMessage.includes('food') || lowerMessage.includes('treat') || lowerMessage.includes('hungry')) {
+        handleFeed();
+      } else if (lowerMessage.includes('hello') || lowerMessage.includes('hi ') || lowerMessage === 'hi') {
+        addCompanionMessage(`Hi there! I'm ${selectedCompanion.name}! How are you feeling today?`);
+      } else if (lowerMessage.includes('tired') || lowerMessage.includes('exhausted')) {
+        addCompanionMessage("It's important to take breaks! How about a short meditation or a walk?");
+      } else if (lowerMessage.includes('sad') || lowerMessage.includes('upset') || lowerMessage.includes('unhappy')) {
+        addCompanionMessage("I'm sorry you're feeling down. Would petting me help? It releases oxytocin - the feel-good hormone!");
+        handlePet();
+      } else if (lowerMessage.includes('happy') || lowerMessage.includes('good') || lowerMessage.includes('great')) {
+        addCompanionMessage("That's wonderful to hear! Your positive energy makes me happy too!");
+      } else if (lowerMessage.includes('help') || lowerMessage.includes('stuck')) {
+        addCompanionMessage("I'm here to help! Try breaking your problem into smaller steps. What's the first tiny part you could solve?");
+      } else if (lowerMessage.includes('thank')) {
+        addCompanionMessage("You're very welcome! I'm always here for you!");
+      } else {
+        // Generic responses
+        const genericResponses = [
+          `I'm here for you! Want to play a game or just chat?`,
+          `Remember to take care of yourself today. How about a quick break?`,
+          `I enjoy our conversations! What would you like to talk about?`,
+          `Pet therapy is great for reducing stress. Try giving me a pet!`,
+          `Did you know that interacting with pets can lower blood pressure? How are you feeling?`
+        ];
+        
+        addCompanionMessage(genericResponses[Math.floor(Math.random() * genericResponses.length)]);
+      }
     }, 1000);
+  };
+  
+  const toggleVoiceInput = () => {
+    setIsRecording(!isRecording);
+    
+    if (!isRecording) {
+      // In a real implementation, this would start voice recording
+      toast({
+        title: "Voice Input",
+        description: "Voice recognition started (simulation)",
+        duration: 3000,
+      });
+      
+      // Simulate recording for 3 seconds
+      setTimeout(() => {
+        setIsRecording(false);
+        const simulatedPhrases = [
+          "I'm feeling a bit tired today",
+          "Can you help me with something?",
+          "Hello, how are you?",
+          "I'd like to play a game",
+          "I need some motivation"
+        ];
+        
+        setNewMessage(simulatedPhrases[Math.floor(Math.random() * simulatedPhrases.length)]);
+        
+        toast({
+          title: "Voice Input Complete",
+          description: "Message transcribed",
+          duration: 2000,
+        });
+      }, 3000);
+    } else {
+      // Stop recording
+      toast({
+        title: "Voice Input",
+        description: "Voice recognition stopped",
+        duration: 2000,
+      });
+    }
   };
   
   const changeCompanion = (companion: Companion) => {
     setSelectedCompanion(companion);
     
-    // Reset messages with a greeting from the new companion
+    // Reset companion state
+    setAction(null);
+    setHappiness(70);
+    setEnergy(80);
+    setRepeating(false);
+    
+    // Welcome message
     setMessages([
       {
         id: Date.now().toString(),
         sender: 'companion',
-        text: `Hi there! I'm ${companion.name}, your learning companion. How can I help you today?`,
+        text: `Hi there! I'm ${companion.name}. Touch me, talk to me, or give me treats! I'm here to keep you company!`,
         timestamp: new Date()
       }
     ]);
+    
+    // Show toast
+    toast({
+      title: `${companion.name} is here!`,
+      description: companion.description,
+      duration: 3000,
+    });
   };
   
+  // Get the companion icon based on type
+  const getCompanionIcon = () => {
+    switch (selectedCompanion.type) {
+      case 'cat':
+        return <Cat className="h-full w-full" />;
+      case 'dog':
+        return <Dog className="h-full w-full" />;
+      case 'rabbit':
+        return <Rabbit className="h-full w-full" />;
+      default:
+        return <Cat className="h-full w-full" />;
+    }
+  };
+  
+  // Get color classes based on companion
+  const getCompanionColorClasses = () => {
+    switch (selectedCompanion.color) {
+      case 'purple':
+        return {
+          bg: "bg-gradient-to-br from-purple-100 to-indigo-100",
+          header: "bg-gradient-to-r from-purple-200 to-indigo-200",
+          primary: "from-purple-500 to-indigo-600",
+          secondary: "from-purple-200 to-indigo-300"
+        };
+      case 'orange':
+        return {
+          bg: "bg-gradient-to-br from-orange-100 to-amber-100",
+          header: "bg-gradient-to-r from-orange-200 to-amber-200",
+          primary: "from-orange-500 to-amber-600",
+          secondary: "from-orange-200 to-amber-300"
+        };
+      case 'green':
+        return {
+          bg: "bg-gradient-to-br from-green-100 to-teal-100",
+          header: "bg-gradient-to-r from-green-200 to-teal-200",
+          primary: "from-green-500 to-teal-600",
+          secondary: "from-green-200 to-teal-300"
+        };
+      default:
+        return {
+          bg: "bg-gradient-to-br from-blue-100 to-indigo-100",
+          header: "bg-gradient-to-r from-blue-200 to-indigo-200",
+          primary: "from-blue-500 to-indigo-600",
+          secondary: "from-blue-200 to-indigo-300"
+        };
+    }
+  };
+  
+  const colorClasses = getCompanionColorClasses();
+  
   return (
-    <div className={`fixed ${minimized ? 'bottom-4 right-4' : 'bottom-0 right-4'} z-40 transition-all duration-300 ${expanded ? 'w-80 md:w-96' : 'w-72'}`}>
+    <div className={`fixed ${minimized ? 'bottom-4 right-4' : 'bottom-0 right-4'} z-40 transition-all duration-300 ${expanded ? 'w-80 md:w-96' : 'w-72'} drop-shadow-xl`}>
       {/* Companion Chat Interface */}
-      <Card className={`shadow-soft-lg border-border overflow-hidden ${minimized ? 'h-auto' : expanded ? 'h-[600px]' : 'h-[400px]'}`}>
+      <Card className={`shadow-2xl border-2 overflow-hidden rounded-xl ${colorClasses.bg} border-${selectedCompanion.color}-200 ${minimized ? 'h-auto' : expanded ? 'h-[600px]' : 'h-[500px]'}`}>
         {!minimized && (
-          <CardHeader className="py-3 px-4 border-b flex flex-row items-center justify-between space-y-0">
+          <CardHeader className={`py-3 px-4 border-b flex flex-row items-center justify-between space-y-0 ${colorClasses.header}`}>
             <div className="flex items-center space-x-2">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={selectedCompanion.avatar} alt={selectedCompanion.name} />
-                <AvatarFallback className="bg-primary/10 text-primary">
-                  {selectedCompanion.name.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
+              <div className={`h-8 w-8 rounded-full bg-gradient-to-r ${colorClasses.primary} flex items-center justify-center text-white`}>
+                {selectedCompanion.name.charAt(0)}
+              </div>
               <div>
                 <h4 className="text-sm font-medium">{selectedCompanion.name}</h4>
                 <p className="text-xs text-muted-foreground">{selectedCompanion.personality}</p>
@@ -181,26 +468,142 @@ const VirtualCompanion = () => {
         {minimized ? (
           <Button 
             onClick={toggleMinimized} 
-            className="w-full py-2 px-4 h-auto rounded-lg flex items-center justify-between bg-primary text-primary-foreground"
+            className={`w-full py-2 px-4 h-auto rounded-lg flex items-center justify-between bg-gradient-to-r ${colorClasses.primary} text-white`}
           >
             <div className="flex items-center">
-              <Cat className="h-5 w-5 mr-2" />
+              {selectedCompanion.type === 'cat' && <Cat className="h-5 w-5 mr-2" />}
+              {selectedCompanion.type === 'dog' && <Dog className="h-5 w-5 mr-2" />}
+              {selectedCompanion.type === 'rabbit' && <Rabbit className="h-5 w-5 mr-2" />}
               <span>{selectedCompanion.name}</span>
             </div>
             <ChevronUp className="h-4 w-4" />
           </Button>
         ) : (
           <>
-            <CardContent className={`p-0 flex-grow overflow-hidden ${expanded ? 'h-[calc(600px-126px)]' : 'h-[calc(400px-126px)]'}`}>
-              <Tabs defaultValue="chat">
-                <TabsList className="w-full grid grid-cols-3 h-10 bg-secondary/50">
+            <CardContent className={`p-0 flex-grow overflow-hidden ${expanded ? 'h-[calc(600px-56px)]' : 'h-[calc(500px-56px)]'}`}>
+              <Tabs defaultValue="pet">
+                <TabsList className={`w-full grid grid-cols-3 h-10 bg-gradient-to-r ${colorClasses.secondary}`}>
+                  <TabsTrigger value="pet">Pet</TabsTrigger>
                   <TabsTrigger value="chat">Chat</TabsTrigger>
-                  <TabsTrigger value="companions">Companions</TabsTrigger>
-                  <TabsTrigger value="mood">Mood</TabsTrigger>
+                  <TabsTrigger value="companions">Friends</TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="chat" className="m-0">
-                  <div className="h-[calc(100%-2.5rem)] flex flex-col bg-secondary/30">
+                <TabsContent value="pet" className="m-0 h-full">
+                  <div className="flex flex-col h-full">
+                    {/* Main Pet Interface - Like Talking Tom */}
+                    <div 
+                      className="flex-grow relative flex flex-col justify-center items-center bg-gradient-to-b from-transparent via-transparent to-white/30 cursor-pointer"
+                      onClick={handlePet}
+                    >
+                      {/* Pet Character */}
+                      <div 
+                        ref={companionRef}
+                        className={`relative w-40 h-40 transition-all duration-300 select-none
+                          ${action === 'happy' ? 'animate-bounce' : ''}
+                          ${action === 'talk' ? 'animate-pulse' : ''}
+                          ${action === 'play' ? 'animate-spin' : ''}
+                          ${action === 'eat' ? 'animate-pulse scale-110' : ''}
+                          ${action === 'blink' ? 'opacity-90' : ''}
+                          ${action === 'look' ? 'translate-x-2' : ''}
+                          ${action === 'sniff' ? 'translate-y-1' : ''}
+                        `}
+                      >
+                        {/* Pet Background */}
+                        <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${colorClasses.primary} opacity-20`} />
+                        
+                        {/* Pet Icon */}
+                        <div className={`absolute inset-0 flex items-center justify-center text-${selectedCompanion.color}-600 transition-all transform ${isSpeaking ? 'scale-105' : ''}`}>
+                          {getCompanionIcon()}
+                        </div>
+                        
+                        {/* Visual speaking indicator */}
+                        {isSpeaking && (
+                          <div className="absolute -right-1 -bottom-1 bg-white rounded-full p-1.5 shadow-md animate-pulse">
+                            <Volume className={`h-5 w-5 text-${selectedCompanion.color}-500`} />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Status Indicators */}
+                      <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center space-y-2">
+                        {/* Happiness Level */}
+                        <div className="flex items-center space-x-2 bg-white/50 rounded-full px-3 py-1 text-xs shadow-sm">
+                          <Heart className={`h-3 w-3 ${happiness > 70 ? 'text-pink-500 fill-pink-500' : 'text-pink-300'}`} />
+                          <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-pink-500 transition-all duration-500"
+                              style={{ width: `${happiness}%` }}
+                            />
+                          </div>
+                        </div>
+                        
+                        {/* Energy Level */}
+                        <div className="flex items-center space-x-2 bg-white/50 rounded-full px-3 py-1 text-xs shadow-sm">
+                          <Sparkles className="h-3 w-3 text-amber-500" />
+                          <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-amber-500 transition-all duration-500" 
+                              style={{ width: `${energy}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Mood Bubble */}
+                      {action && (
+                        <div className={`absolute top-6 right-6 bg-white rounded-lg px-3 py-1.5 shadow-lg animate-fade-in`}>
+                          <p className="text-sm font-medium">
+                            {action === 'happy' && '😊 Happy!'}
+                            {action === 'talk' && '💬 Talking...'}
+                            {action === 'play' && '🎮 Playing!'}
+                            {action === 'eat' && '🍪 Eating!'}
+                            {action === 'blink' && '👁️ ...'}
+                            {action === 'look' && '👀 ...'}
+                            {action === 'sniff' && '👃 ...'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Pet Interaction Buttons */}
+                    <div className="h-20 border-t flex items-center justify-around p-2 border-t-white/50 bg-white/30">
+                      <Button
+                        onClick={handlePet}
+                        className={`h-14 w-14 rounded-full bg-gradient-to-br ${colorClasses.primary} text-white shadow-md hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center`}
+                      >
+                        <Hand className="h-5 w-5 mb-0.5" />
+                        <span className="text-[10px]">Pet</span>
+                      </Button>
+                      
+                      <Button
+                        onClick={handlePlay}
+                        className={`h-14 w-14 rounded-full bg-gradient-to-br ${colorClasses.primary} text-white shadow-md hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center`}
+                      >
+                        <Sparkles className="h-5 w-5 mb-0.5" />
+                        <span className="text-[10px]">Play</span>
+                      </Button>
+                      
+                      <Button
+                        onClick={handleFeed}
+                        className={`h-14 w-14 rounded-full bg-gradient-to-br ${colorClasses.primary} text-white shadow-md hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center`}
+                      >
+                        <Gift className="h-5 w-5 mb-0.5" />
+                        <span className="text-[10px]">Treat</span>
+                      </Button>
+                      
+                      <Button
+                        onClick={handleRepeat}
+                        className={`h-14 w-14 rounded-full ${repeating ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-gray-400 to-gray-500'} text-white shadow-md hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center`}
+                      >
+                        <Volume className="h-5 w-5 mb-0.5" />
+                        <span className="text-[10px]">Echo</span>
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="chat" className="m-0 h-full">
+                  <div className="h-full flex flex-col">
                     <div className="flex-grow overflow-y-auto p-4 space-y-4">
                       {messages.map((message) => (
                         <div 
@@ -208,30 +611,40 @@ const VirtualCompanion = () => {
                           className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                           <div 
-                            className={`max-w-[75%] rounded-2xl px-4 py-2 ${
+                            className={`max-w-[75%] rounded-2xl px-4 py-2 shadow-sm ${
                               message.sender === 'user' 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'bg-secondary'
+                                ? `bg-gradient-to-r ${colorClasses.primary} text-white` 
+                                : 'bg-white'
                             }`}
                           >
                             <p className="text-sm">{message.text}</p>
                           </div>
                         </div>
                       ))}
+                      <div ref={messagesEndRef} />
                     </div>
                     
-                    <form onSubmit={handleSendMessage} className="p-3 border-t bg-card">
+                    <form onSubmit={handleSendMessage} className="p-3 border-t bg-white/50">
                       <div className="flex space-x-2">
+                        <Button 
+                          type="button" 
+                          size="icon" 
+                          variant={isRecording ? "destructive" : "outline"}
+                          onClick={toggleVoiceInput}
+                          className="h-10 w-10 rounded-full"
+                        >
+                          <Mic className="h-4 w-4" />
+                        </Button>
                         <Input
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           placeholder="Type a message..."
-                          className="input-field"
+                          className="input-field rounded-full bg-white/80"
                         />
                         <Button 
                           type="submit" 
                           size="icon" 
-                          className="bg-primary text-primary-foreground h-10 w-10"
+                          className={`bg-gradient-to-r ${colorClasses.primary} text-white h-10 w-10 rounded-full`}
                         >
                           <Send className="h-4 w-4" />
                         </Button>
@@ -240,72 +653,34 @@ const VirtualCompanion = () => {
                   </div>
                 </TabsContent>
                 
-                <TabsContent value="companions" className="m-0">
-                  <div className="h-[calc(100%-2.5rem)] overflow-y-auto p-4 space-y-4 bg-secondary/30">
+                <TabsContent value="companions" className="m-0 h-full">
+                  <div className="h-full overflow-y-auto p-4 space-y-4">
                     {companions.map((companion) => (
                       <div 
                         key={companion.id}
                         onClick={() => changeCompanion(companion)}
-                        className={`p-3 rounded-lg cursor-pointer transition-all 
+                        className={`p-3 rounded-xl cursor-pointer transition-all hover:shadow-md
                           ${selectedCompanion.id === companion.id 
-                            ? 'bg-primary/10 border border-primary/30' 
-                            : 'bg-white border border-border hover:border-primary/20'
+                            ? `bg-${companion.color}-100 border-2 border-${companion.color}-300` 
+                            : 'bg-white/80 border border-white hover:bg-white'
                           }`}
                       >
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={companion.avatar} />
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              {companion.name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
+                        <div className="flex items-center">
+                          <div className={`h-16 w-16 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-${companion.color}-200 to-${companion.color}-100 text-${companion.color}-600 mr-3`}>
+                            {companion.type === 'cat' && <Cat className="h-10 w-10" />}
+                            {companion.type === 'dog' && <Dog className="h-10 w-10" />}
+                            {companion.type === 'rabbit' && <Rabbit className="h-10 w-10" />}
+                          </div>
                           <div>
-                            <h4 className="font-medium">{companion.name}</h4>
+                            <h4 className="font-medium text-lg">{companion.name}</h4>
                             <p className="text-xs text-muted-foreground">{companion.personality}</p>
+                            <p className="text-sm mt-1 text-muted-foreground line-clamp-2">
+                              {companion.description}
+                            </p>
                           </div>
                         </div>
-                        <p className="text-sm mt-2 text-muted-foreground">
-                          {companion.description}
-                        </p>
                       </div>
                     ))}
-                    
-                    <Button variant="outline" className="w-full mt-2">
-                      <PlusCircle className="h-4 w-4 mr-2" />
-                      Customize Companion
-                    </Button>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="mood" className="m-0">
-                  <div className="h-[calc(100%-2.5rem)] p-4 flex flex-col items-center justify-center bg-secondary/30">
-                    <div className="text-center">
-                      <div className="relative h-32 w-32 mx-auto mb-4">
-                        <Avatar className="h-32 w-32">
-                          <AvatarImage src={selectedCompanion.avatar} />
-                          <AvatarFallback className="text-4xl bg-primary/10 text-primary">
-                            {selectedCompanion.name.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-md">
-                          <Heart className="h-6 w-6 text-red-500 fill-red-500" />
-                        </div>
-                      </div>
-                      
-                      <h3 className="text-xl font-medium mb-1">{selectedCompanion.name} is {companionStatus.mood}</h3>
-                      <p className="text-sm text-muted-foreground mb-6">Energy level: {companionStatus.energy}%</p>
-                      
-                      <div className="space-y-4 text-center">
-                        <Button className="w-full">
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          Play with {selectedCompanion.name}
-                        </Button>
-                        <Button variant="outline" className="w-full">
-                          <Image className="h-4 w-4 mr-2" />
-                          Customize Appearance
-                        </Button>
-                      </div>
-                    </div>
                   </div>
                 </TabsContent>
               </Tabs>
