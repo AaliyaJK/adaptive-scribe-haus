@@ -32,13 +32,16 @@ const Header = () => {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'py-3 bg-white/80 backdrop-blur-md shadow-sm' : 'py-5 bg-transparent'
+        isScrolled ? 'py-3 bg-white/90 backdrop-blur-md shadow-sm' : 'py-5 bg-transparent'
       }`}
     >
       <div className="container mx-auto px-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center space-x-2">
-          <Brain className="h-8 w-8 text-primary" />
-          <span className="text-xl font-heading font-semibold text-foreground">AdaptiveScribe</span>
+        <Link to="/" className="flex items-center space-x-2 group">
+          <Brain className="h-8 w-8 text-primary group-hover:text-primary/80 transition-all duration-300" />
+          <div className="flex flex-col">
+            <span className="text-xl font-heading font-bold text-foreground">NeuroLearn</span>
+            <span className="text-xs text-muted-foreground">where learning goes beyond limits</span>
+          </div>
         </Link>
 
         {/* Desktop Navigation */}
@@ -47,9 +50,9 @@ const Header = () => {
             <Link
               key={item.name}
               to={item.href}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
+              className={`text-sm font-medium transition-all duration-300 hover:text-primary relative after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:bg-primary after:w-full after:origin-bottom-right after:scale-x-0 hover:after:scale-x-100 hover:after:origin-bottom-left after:transition-transform after:duration-300 ${
                 location.pathname === item.href
-                  ? 'text-primary'
+                  ? 'text-primary after:scale-x-100'
                   : 'text-foreground/80'
               }`}
             >
@@ -65,6 +68,7 @@ const Header = () => {
             size="icon"
             onClick={toggleMenu}
             aria-label="Toggle menu"
+            className="text-foreground hover:text-primary transition-colors"
           >
             {isMenuOpen ? (
               <X className="h-6 w-6" />
@@ -77,13 +81,13 @@ const Header = () => {
 
       {/* Mobile Navigation Menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-background border-t">
-          <div className="container mx-auto py-4 px-4 flex flex-col space-y-3">
+        <div className="md:hidden bg-background/95 backdrop-blur-md border-t border-border animate-slide-down">
+          <div className="container mx-auto py-4 px-4 flex flex-col space-y-4">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 to={item.href}
-                className={`py-2 text-base font-medium transition-colors hover:text-primary ${
+                className={`py-2 text-base font-medium transition-all duration-300 hover:text-primary ${
                   location.pathname === item.href
                     ? 'text-primary'
                     : 'text-foreground/80'

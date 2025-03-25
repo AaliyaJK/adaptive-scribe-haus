@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Brain, Heart } from 'lucide-react';
+import { Brain, Heart, Star } from 'lucide-react';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -11,9 +11,12 @@ const Footer = () => {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-1">
-            <Link to="/" className="flex items-center space-x-2">
-              <Brain className="h-7 w-7 text-primary" />
-              <span className="text-lg font-heading font-semibold">AdaptiveScribe</span>
+            <Link to="/" className="flex items-center space-x-2 group">
+              <Brain className="h-7 w-7 text-primary group-hover:text-primary/80 transition-all duration-300" />
+              <div className="flex flex-col">
+                <span className="text-lg font-heading font-semibold">NeuroLearn</span>
+                <span className="text-xs text-muted-foreground">where learning goes beyond limits</span>
+              </div>
             </Link>
             <p className="mt-4 text-sm text-muted-foreground">
               AI-powered learning platform personalized for neurodivergent learners.
@@ -49,11 +52,11 @@ const Footer = () => {
         
         <div className="border-t border-border mt-10 pt-6 flex flex-col md:flex-row items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            © {currentYear} AdaptiveScribe. All rights reserved.
+            © {currentYear} NeuroLearn. All rights reserved.
           </p>
           <div className="flex items-center mt-4 md:mt-0">
             <p className="text-sm text-muted-foreground flex items-center">
-              Made with <Heart className="h-4 w-4 text-red-500 mx-1" /> for neurodivergent learners
+              Made with <Heart className="h-4 w-4 text-red-500 mx-1 animate-pulse-slow" /> for neurodivergent learners
             </p>
           </div>
         </div>
