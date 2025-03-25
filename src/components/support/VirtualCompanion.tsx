@@ -41,6 +41,14 @@ type Message = {
   timestamp: Date;
 };
 
+type SoundMap = {
+  [key: string]: {
+    cat: string;
+    dog: string;
+    rabbit: string;
+  }
+};
+
 const companions: Companion[] = [
   {
     id: 'luna',
@@ -83,6 +91,40 @@ const initialMessages: Message[] = [
   }
 ];
 
+// Sound file mapping
+const soundFiles: SoundMap = {
+  pet: {
+    cat: "/sounds/cat-purr.mp3",
+    dog: "/sounds/dog-pant.mp3",
+    rabbit: "/sounds/rabbit-nibble.mp3"
+  },
+  happy: {
+    cat: "/sounds/cat-meow-happy.mp3",
+    dog: "/sounds/dog-happy.mp3",
+    rabbit: "/sounds/rabbit-happy.mp3"
+  },
+  play: {
+    cat: "/sounds/cat-play.mp3",
+    dog: "/sounds/dog-play.mp3",
+    rabbit: "/sounds/rabbit-hop.mp3"
+  },
+  eat: {
+    cat: "/sounds/cat-eating.mp3",
+    dog: "/sounds/dog-eating.mp3",
+    rabbit: "/sounds/rabbit-eating.mp3"
+  },
+  message: {
+    cat: "/sounds/cat-short-meow.mp3",
+    dog: "/sounds/dog-bark-short.mp3",
+    rabbit: "/sounds/rabbit-squeak.mp3"
+  },
+  excited: {
+    cat: "/sounds/cat-excited.mp3",
+    dog: "/sounds/dog-excited.mp3",
+    rabbit: "/sounds/rabbit-excited.mp3"
+  }
+};
+
 const VirtualCompanion = () => {
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
@@ -95,9 +137,22 @@ const VirtualCompanion = () => {
   const [happiness, setHappiness] = useState(70);
   const [energy, setEnergy] = useState(80);
   const [repeating, setRepeating] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   
   const companionRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // Create audio element on component mount
+  useEffect(() => {
+    audioRef.current = new Audio();
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
   
   const toggleExpanded = () => {
     setExpanded(!expanded);
@@ -127,12 +182,50 @@ const VirtualCompanion = () => {
     return () => clearInterval(idleInterval);
   }, [action]);
 
+  // Play sound function
+  const playSound = (type: string) => {
+    if (!soundEnabled || !audioRef.current) return;
+    
+    const soundCategory = soundFiles[type] || soundFiles.happy; // Default to happy sounds
+    const soundUrl = soundCategory[selectedCompanion.type];
+    
+    try {
+      if (soundUrl) {
+        console.log(`Playing ${type} sound`);
+        audioRef.current.src = soundUrl;
+        audioRef.current.volume = 0.7; // 70% volume by default
+        audioRef.current.play().catch(err => {
+          console.warn("Audio playback was prevented:", err);
+          // Show fallback toast for browsers that block autoplay
+          toast({
+            title: `${selectedCompanion.name} says:`,
+            description: type === 'happy' 
+              ? (selectedCompanion.type === 'cat' ? "Purrrr!" : selectedCompanion.type === 'dog' ? "Woof woof!" : "Squeak!") 
+              : selectedCompanion.sounds[Math.floor(Math.random() * selectedCompanion.sounds.length)] + "!",
+            duration: 1500,
+          });
+        });
+      }
+    } catch (error) {
+      console.error("Error playing sound:", error);
+      
+      // Fallback to toast
+      toast({
+        title: `${selectedCompanion.name} says:`,
+        description: type === 'happy' 
+          ? (selectedCompanion.type === 'cat' ? "Purrrr!" : selectedCompanion.type === 'dog' ? "Woof woof!" : "Squeak!") 
+          : selectedCompanion.sounds[Math.floor(Math.random() * selectedCompanion.sounds.length)] + "!",
+        duration: 1500,
+      });
+    }
+  };
+
   // Pet the companion
   const handlePet = () => {
     if (action) return; // Don't interrupt current action
     
     setAction('happy');
-    playSound('happy');
+    playSound('pet');
     setHappiness(prev => Math.min(prev + 10, 100));
     
     // Return to idle after animation
@@ -159,7 +252,7 @@ const VirtualCompanion = () => {
     if (action) return; // Don't interrupt current action
     
     setAction('play');
-    playSound('excited');
+    playSound('play');
     setHappiness(prev => Math.min(prev + 15, 100));
     setEnergy(prev => Math.max(prev - 10, 20));
     
@@ -175,7 +268,7 @@ const VirtualCompanion = () => {
     if (action) return; // Don't interrupt current action
     
     setAction('eat');
-    playSound('happy');
+    playSound('eat');
     setEnergy(prev => Math.min(prev + 20, 100));
     
     // Return to idle after animation
@@ -204,30 +297,13 @@ const VirtualCompanion = () => {
     }
   };
 
-  // Play companion sounds
-  const playSound = (type: string) => {
-    // In a real implementation, this would play actual audio
-    console.log(`Playing ${type} sound`);
-    
-    // For demonstration, show a toast
-    let sound = "";
-    
-    if (type === 'happy') {
-      if (selectedCompanion.type === 'cat') sound = "Purrrr!";
-      if (selectedCompanion.type === 'dog') sound = "Woof woof!";
-      if (selectedCompanion.type === 'rabbit') sound = "Squeak!";
-    } else if (type === 'excited') {
-      if (selectedCompanion.type === 'cat') sound = "Meow meow!";
-      if (selectedCompanion.type === 'dog') sound = "Bark bark!";
-      if (selectedCompanion.type === 'rabbit') sound = "Thump thump!";
-    } else {
-      sound = selectedCompanion.sounds[Math.floor(Math.random() * selectedCompanion.sounds.length)] + "!";
-    }
-    
+  // Toggle sound effects
+  const toggleSound = () => {
+    setSoundEnabled(!soundEnabled);
     toast({
-      title: `${selectedCompanion.name} says:`,
-      description: sound,
-      duration: 1500,
+      title: soundEnabled ? "Sounds Disabled" : "Sounds Enabled",
+      description: soundEnabled ? "Companion sounds have been turned off." : "Companion sounds have been turned on.",
+      duration: 2000,
     });
   };
 
@@ -235,6 +311,7 @@ const VirtualCompanion = () => {
   const addCompanionMessage = (text: string) => {
     setIsSpeaking(true);
     setAction('talk');
+    playSound('message');
     
     // Add the message
     const companionMessage: Message = {
@@ -297,10 +374,12 @@ const VirtualCompanion = () => {
         handlePet();
       } else if (lowerMessage.includes('happy') || lowerMessage.includes('good') || lowerMessage.includes('great')) {
         addCompanionMessage("That's wonderful to hear! Your positive energy makes me happy too!");
+        playSound('happy');
       } else if (lowerMessage.includes('help') || lowerMessage.includes('stuck')) {
         addCompanionMessage("I'm here to help! Try breaking your problem into smaller steps. What's the first tiny part you could solve?");
       } else if (lowerMessage.includes('thank')) {
         addCompanionMessage("You're very welcome! I'm always here for you!");
+        playSound('happy');
       } else {
         // Generic responses
         const genericResponses = [
@@ -381,6 +460,9 @@ const VirtualCompanion = () => {
       description: companion.description,
       duration: 3000,
     });
+    
+    // Play greeting sound
+    playSound('happy');
   };
   
   // Get the companion icon based on type
@@ -449,6 +531,19 @@ const VirtualCompanion = () => {
               </div>
             </div>
             <div className="flex items-center space-x-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={toggleSound} 
+                className="h-7 w-7"
+                title={soundEnabled ? "Mute sounds" : "Enable sounds"}
+              >
+                {soundEnabled ? (
+                  <Volume className="h-4 w-4" />
+                ) : (
+                  <Volume className="h-4 w-4 text-muted-foreground opacity-50" />
+                )}
+              </Button>
               {expanded ? (
                 <Button variant="ghost" size="icon" onClick={toggleExpanded} className="h-7 w-7">
                   <Minimize2 className="h-4 w-4" />
@@ -693,3 +788,4 @@ const VirtualCompanion = () => {
 };
 
 export default VirtualCompanion;
+
