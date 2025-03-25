@@ -8,13 +8,15 @@ import {
   Clock,
   Trophy,
   Book,
-  Cat
+  Cat,
+  ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // MMSE questions with points and proper images
 const questions = [
@@ -190,11 +192,18 @@ const MMSEAssessment: React.FC = () => {
   const [assessmentComplete, setAssessmentComplete] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [animateCard, setAnimateCard] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const currentQuestion = questions[currentQuestionIndex];
   const totalQuestions = questions.length;
   const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
+
+  useEffect(() => {
+    // Add entrance animation when component mounts
+    setAnimateCard(true);
+  }, []);
 
   const handleOptionSelect = (option: string) => {
     if (feedbackVisible) return;
@@ -219,17 +228,22 @@ const MMSEAssessment: React.FC = () => {
     
     // Auto-advance after feedback
     setTimeout(() => {
-      setFeedbackVisible(false);
-      if (currentQuestionIndex < totalQuestions - 1) {
-        setCurrentQuestionIndex(prev => prev + 1);
-        setSelectedAnswer(null);
-      } else {
-        setAssessmentComplete(true);
-        toast({
-          title: "Assessment Complete!",
-          description: `You've completed the cognitive assessment with a score of ${score}/${getTotalPossiblePoints()}.`,
-        });
-      }
+      setAnimateCard(false);
+      
+      setTimeout(() => {
+        setFeedbackVisible(false);
+        if (currentQuestionIndex < totalQuestions - 1) {
+          setCurrentQuestionIndex(prev => prev + 1);
+          setSelectedAnswer(null);
+          setAnimateCard(true);
+        } else {
+          setAssessmentComplete(true);
+          toast({
+            title: "Assessment Complete!",
+            description: `You've completed the cognitive assessment with a score of ${score}/${getTotalPossiblePoints()}.`,
+          });
+        }
+      }, 300); // Short delay before showing next question
     }, 1500);
   };
 
@@ -249,9 +263,14 @@ const MMSEAssessment: React.FC = () => {
 
   const handleNextQuestion = () => {
     if (currentQuestionIndex < totalQuestions - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-      setSelectedAnswer(null);
-      setFeedbackVisible(false);
+      setAnimateCard(false);
+      
+      setTimeout(() => {
+        setCurrentQuestionIndex(prev => prev + 1);
+        setSelectedAnswer(null);
+        setFeedbackVisible(false);
+        setAnimateCard(true);
+      }, 300);
     } else if (!assessmentComplete) {
       setAssessmentComplete(true);
     }
@@ -259,18 +278,24 @@ const MMSEAssessment: React.FC = () => {
 
   const handlePrevQuestion = () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
-      setSelectedAnswer(answers[currentQuestionIndex - 1] || null);
-      setFeedbackVisible(false);
+      setAnimateCard(false);
+      
+      setTimeout(() => {
+        setCurrentQuestionIndex(prev => prev - 1);
+        setSelectedAnswer(answers[currentQuestionIndex - 1] || null);
+        setFeedbackVisible(false);
+        setAnimateCard(true);
+      }, 300);
     }
   };
 
   // Animation classes for the card
   const getAnimationClass = () => {
+    if (!animateCard) return 'opacity-0 transform translate-x-4';
     if (feedbackVisible) {
-      return isCorrect ? 'animate-success' : 'animate-error';
+      return isCorrect ? 'animate-success opacity-100 transform translate-x-0' : 'animate-error opacity-100 transform translate-x-0';
     }
-    return 'animate-in fade-in duration-500';
+    return 'animate-in fade-in-0 slide-in-from-right-5 duration-500 opacity-100 transform translate-x-0';
   };
 
   return (
@@ -293,7 +318,7 @@ const MMSEAssessment: React.FC = () => {
               <Progress value={progress} className="h-2" />
             </div>
             
-            <Card className={`border-2 shadow-lg overflow-hidden transition-all ${getAnimationClass()} ${feedbackVisible ? (isCorrect ? 'border-green-400' : 'border-red-400') : 'border-border'}`}>
+            <Card className={`border-2 shadow-lg overflow-hidden transition-all duration-300 ${getAnimationClass()} ${feedbackVisible ? (isCorrect ? 'border-green-400' : 'border-red-400') : 'border-border'}`}>
               <CardHeader className="bg-gradient-to-r from-blue-100 to-purple-100 pb-2">
                 <div className="flex justify-between items-center">
                   <span className="bg-primary text-white text-xs px-3 py-1 rounded-full">
@@ -312,7 +337,7 @@ const MMSEAssessment: React.FC = () => {
                     <img 
                       src={currentQuestion.image} 
                       alt={currentQuestion.category} 
-                      className="rounded-lg max-h-48 object-cover w-full h-48 border bg-white p-2"
+                      className="rounded-lg max-h-48 object-cover w-full h-48 border bg-white p-2 hover:scale-105 transition-transform duration-300"
                     />
                   </div>
                 )}
@@ -322,7 +347,7 @@ const MMSEAssessment: React.FC = () => {
                     <Button
                       key={index}
                       variant={selectedAnswer === option ? "default" : "outline"}
-                      className={`justify-start h-auto py-3 px-4 text-left transition-all hover:bg-primary/10 hover:text-primary-foreground
+                      className={`justify-start h-auto py-3 px-4 text-left transition-all hover:scale-102 hover:shadow-md
                         ${selectedAnswer === option ? 'bg-primary text-primary-foreground' : ''}
                         ${feedbackVisible && option === currentQuestion.answer ? 'bg-green-500 text-white border-green-500' : ''}
                         ${feedbackVisible && selectedAnswer === option && option !== currentQuestion.answer ? 'bg-red-500 text-white border-red-500' : ''}
@@ -336,7 +361,7 @@ const MMSEAssessment: React.FC = () => {
                             <img 
                               src={currentQuestion.optionImages[index]} 
                               alt={option}
-                              className="w-10 h-10 object-cover rounded-full border border-current"
+                              className="w-12 h-12 object-cover rounded-full border border-current shadow-sm hover:shadow-md transition-shadow"
                             />
                           )}
                           {(!currentQuestion.optionImages || !currentQuestion.optionImages[index]) && (
@@ -365,6 +390,7 @@ const MMSEAssessment: React.FC = () => {
                   variant="outline"
                   onClick={handlePrevQuestion}
                   disabled={currentQuestionIndex === 0 || feedbackVisible}
+                  className="hover:bg-primary/10"
                 >
                   <ChevronLeft className="mr-2 h-4 w-4" /> Previous
                 </Button>
@@ -372,6 +398,7 @@ const MMSEAssessment: React.FC = () => {
                   variant="outline"
                   onClick={handleNextQuestion}
                   disabled={!selectedAnswer || feedbackVisible}
+                  className="hover:bg-primary/10"
                 >
                   {currentQuestionIndex < totalQuestions - 1 ? (
                     <>Next <ChevronRight className="ml-2 h-4 w-4" /></>
@@ -385,9 +412,9 @@ const MMSEAssessment: React.FC = () => {
         ) : (
           // Results screen
           <div className="animate-in slide-in-from-bottom duration-700">
-            <Card className="border-2 shadow-xl overflow-hidden">
+            <Card className="border-2 shadow-xl overflow-hidden transform transition-all hover:shadow-2xl">
               <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 text-center">
-                <div className="mx-auto mb-4 rounded-full bg-primary/10 p-3 w-16 h-16 flex items-center justify-center">
+                <div className="mx-auto mb-4 rounded-full bg-primary/10 p-3 w-16 h-16 flex items-center justify-center animate-bounce-slow">
                   <Trophy className="h-8 w-8 text-primary" />
                 </div>
                 <CardTitle className="text-2xl">Assessment Complete!</CardTitle>
@@ -409,7 +436,7 @@ const MMSEAssessment: React.FC = () => {
                   />
                 </div>
                 
-                <div className="p-4 rounded-lg bg-secondary mb-6">
+                <div className="p-4 rounded-lg bg-secondary mb-6 transform transition-all hover:scale-102 hover:shadow-md">
                   <h3 className="font-bold text-lg mb-2">{getCurrentResultLevel().title}</h3>
                   <p className="text-muted-foreground mb-4">{getCurrentResultLevel().description}</p>
                   <div className="bg-primary/10 p-3 rounded-md">
@@ -430,15 +457,15 @@ const MMSEAssessment: React.FC = () => {
                 </div>
               </CardContent>
               
-              <CardFooter className="flex justify-center gap-4 pt-2 pb-6 border-t">
-                <Button asChild>
-                  <Link to="/learning" className="flex items-center">
+              <CardFooter className={`flex ${isMobile ? 'flex-col' : 'flex-row justify-center'} gap-4 pt-2 pb-6 border-t`}>
+                <Button asChild className="w-full md:w-auto">
+                  <Link to="/learning" className="flex items-center justify-center">
                     <Book className="mr-2 h-4 w-4" />
                     Start Learning
                   </Link>
                 </Button>
-                <Button variant="outline" asChild>
-                  <Link to="/support" className="flex items-center">
+                <Button variant="outline" asChild className="w-full md:w-auto">
+                  <Link to="/support" className="flex items-center justify-center">
                     <Cat className="mr-2 h-4 w-4" />
                     Meet Your Companion
                   </Link>
