@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Mic, 
@@ -12,7 +11,8 @@ import {
   RefreshCw,
   Clipboard,
   CopyCheck,
-  ScanText
+  ScanText,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,24 +20,89 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useToast } from '@/components/ui/use-toast';
+import { processTextWithGemini, TextCorrection } from '@/utils/geminiApi';
 
 const WritingAssistance = () => {
   const [text, setText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [simplifiedText, setSimplifiedText] = useState('');
-  const [corrections, setCorrections] = useState<Array<{original: string, corrected: string, explanation: string}>>([]);
+  const [corrections, setCorrections] = useState<TextCorrection[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState('write');
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  
+  // Web Speech API
+  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
   
   // Settings
   const [settings, setSettings] = useState({
     spellCheck: true,
     grammarCheck: true,
-    simplifyText: false,
+    simplifyText: true,
     dyslexiaFont: false,
     highContrast: false,
+    useAI: true,
   });
+  
+  // Initialize speech recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+      const recognitionInstance = new SpeechRecognition();
+      recognitionInstance.continuous = true;
+      recognitionInstance.interimResults = true;
+      
+      recognitionInstance.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0].transcript)
+          .join('');
+        
+        setText((prev) => {
+          // Only replace text if we're starting fresh, otherwise append
+          if (prev.trim() === '') {
+            return transcript;
+          } else {
+            // Find the last sentence ending to avoid cutting off words
+            const lastSentenceIndex = Math.max(
+              prev.lastIndexOf('.'), 
+              prev.lastIndexOf('!'), 
+              prev.lastIndexOf('?')
+            );
+            
+            // If no sentence ending found, just keep everything
+            if (lastSentenceIndex === -1) {
+              return transcript;
+            }
+            
+            // Keep everything up to the last sentence ending, then add the new transcript
+            return prev.substring(0, lastSentenceIndex + 1) + ' ' + transcript;
+          }
+        });
+      };
+      
+      recognitionInstance.onerror = (event) => {
+        console.error('Speech recognition error', event.error);
+        setIsRecording(false);
+        toast({
+          title: "Speech Recognition Error",
+          description: `Error: ${event.error}. Please try again.`,
+          variant: "destructive"
+        });
+      };
+      
+      setRecognition(recognitionInstance);
+    }
+    
+    return () => {
+      if (recognition) {
+        recognition.stop();
+      }
+    };
+  }, []);
   
   // Reset the copied state after 2 seconds
   useEffect(() => {
@@ -51,6 +116,15 @@ const WritingAssistance = () => {
   }, [copied]);
   
   const toggleRecording = () => {
+    if (!recognition) {
+      toast({
+        title: "Feature Not Supported",
+        description: "Speech recognition is not supported in your browser.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (isRecording) {
       stopRecording();
     } else {
@@ -59,55 +133,110 @@ const WritingAssistance = () => {
   };
   
   const startRecording = () => {
-    setIsRecording(true);
-    // In a real implementation, this would use the Web Speech API
-    // For now, we'll just simulate recording
-    
-    // Simulate appending text from speech after a delay
-    setTimeout(() => {
-      setText(prev => prev + (prev ? ' ' : '') + "This is simulated speach-to-text. It might contain some erors and gramatical mistakes that will be corrected by the AI.");
-    }, 3000);
+    try {
+      recognition?.start();
+      setIsRecording(true);
+      toast({
+        title: "Listening...",
+        description: "Start speaking clearly into your microphone.",
+      });
+    } catch (error) {
+      console.error('Error starting speech recognition:', error);
+      toast({
+        title: "Could not start recording",
+        description: "There was an error starting the speech recognition.",
+        variant: "destructive"
+      });
+    }
   };
   
   const stopRecording = () => {
-    setIsRecording(false);
-    // In a real implementation, this would stop the Web Speech API recording
+    try {
+      recognition?.stop();
+      setIsRecording(false);
+      toast({
+        title: "Recording stopped",
+        description: "Speech-to-text conversion complete.",
+      });
+    } catch (error) {
+      console.error('Error stopping speech recognition:', error);
+    }
   };
   
-  const processText = () => {
+  const processText = async () => {
     if (!text.trim()) return;
     
     setIsProcessing(true);
+    setError(null);
     
-    // Simulate processing delay
-    setTimeout(() => {
-      // Simulate spell check and grammar corrections
-      setCorrections([
-        {
-          original: "speach-to-text",
-          corrected: "speech-to-text",
-          explanation: "The correct spelling is 'speech' rather than 'speach'."
-        },
-        {
-          original: "erors",
-          corrected: "errors",
-          explanation: "The correct spelling is 'errors' with double 'r'."
-        },
-        {
-          original: "gramatical",
-          corrected: "grammatical",
-          explanation: "The correct spelling is 'grammatical' with double 'm'."
+    try {
+      if (settings.useAI) {
+        // Use Gemini API
+        const result = await processTextWithGemini(text);
+        
+        if (result.error) {
+          setError(result.error);
+          toast({
+            title: "AI Processing Error",
+            description: result.error,
+            variant: "destructive"
+          });
+        } else {
+          setCorrections(result.corrections);
+          setSimplifiedText(result.simplifiedText);
+          
+          if (result.corrections.length > 0) {
+            setActiveTab('corrections');
+            toast({
+              title: "Analysis Complete",
+              description: `Found ${result.corrections.length} suggestions for improvement.`,
+            });
+          } else {
+            toast({
+              title: "Analysis Complete",
+              description: "No corrections needed. Your text looks good!",
+            });
+          }
         }
-      ]);
-      
-      // Simulate simplified text
-      setSimplifiedText(
-        "This is simulated speech-to-text. It might contain some errors and grammatical mistakes that will be corrected by the AI."
-      );
-      
+      } else {
+        // Simulate processing with fake data (as in the original implementation)
+        setTimeout(() => {
+          // Simulate spell check and grammar corrections
+          setCorrections([
+            {
+              original: "speach-to-text",
+              corrected: "speech-to-text",
+              explanation: "The correct spelling is 'speech' rather than 'speach'."
+            },
+            {
+              original: "erors",
+              corrected: "errors",
+              explanation: "The correct spelling is 'errors' with double 'r'."
+            },
+            {
+              original: "gramatical",
+              corrected: "grammatical",
+              explanation: "The correct spelling is 'grammatical' with double 'm'."
+            }
+          ]);
+          
+          // Simulate simplified text
+          setSimplifiedText(text);
+          
+          setActiveTab('corrections');
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Error processing text:', error);
+      setError(`An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while processing your text.",
+        variant: "destructive"
+      });
+    } finally {
       setIsProcessing(false);
-      setActiveTab('corrections');
-    }, 1500);
+    }
   };
   
   const applyCorrections = () => {
@@ -120,17 +249,33 @@ const WritingAssistance = () => {
     setText(processedText);
     setCorrections([]);
     setActiveTab('write');
+    
+    toast({
+      title: "Corrections Applied",
+      description: "All suggested corrections have been applied to your text.",
+    });
   };
   
   const copyToClipboard = () => {
     navigator.clipboard.writeText(simplifiedText || text);
     setCopied(true);
+    
+    toast({
+      title: "Copied to Clipboard",
+      description: "Text has been copied to your clipboard.",
+    });
   };
   
   const resetText = () => {
     setText('');
     setSimplifiedText('');
     setCorrections([]);
+    setError(null);
+    
+    toast({
+      title: "Reset Complete",
+      description: "All text and corrections have been cleared.",
+    });
   };
   
   const toggleSetting = (setting: keyof typeof settings) => {
@@ -138,6 +283,11 @@ const WritingAssistance = () => {
       ...prev,
       [setting]: !prev[setting]
     }));
+    
+    toast({
+      title: "Setting Updated",
+      description: `${setting.charAt(0).toUpperCase() + setting.slice(1).replace(/([A-Z])/g, ' $1')} has been ${settings[setting] ? 'disabled' : 'enabled'}.`,
+    });
   };
   
   return (
@@ -154,14 +304,31 @@ const WritingAssistance = () => {
         <TabsContent value="write">
           <Card className="shadow-soft border-border">
             <CardHeader>
-              <CardTitle className="text-2xl font-heading">AI Writing Assistant</CardTitle>
+              <CardTitle className="text-2xl font-heading">
+                <span className="flex items-center">
+                  <Sparkles className="h-6 w-6 text-primary mr-2" />
+                  AI Writing Assistant
+                </span>
+              </CardTitle>
               <CardDescription>
-                Get real-time help with writing, spelling, and grammar
+                {settings.useAI 
+                  ? "Get AI-powered help with writing, spelling, and grammar using Google's Gemini API"
+                  : "Get real-time help with writing, spelling, and grammar"}
               </CardDescription>
             </CardHeader>
             
             <CardContent>
               <div className="space-y-4">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>
+                      {error}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
                 <div className="relative">
                   <Textarea
                     value={text}
@@ -250,7 +417,7 @@ const WritingAssistance = () => {
                 ) : (
                   <>
                     <ScanText className="h-4 w-4 mr-2" />
-                    Check & Improve
+                    {settings.useAI ? "AI Check & Improve" : "Check & Improve"}
                   </>
                 )}
               </Button>
@@ -272,7 +439,7 @@ const WritingAssistance = () => {
                 <div className="py-12 flex flex-col items-center justify-center">
                   <LoaderCircle className="h-10 w-10 text-primary animate-spin mb-4" />
                   <p className="text-center text-muted-foreground">
-                    Analyzing your text for improvements...
+                    {settings.useAI ? "AI is analyzing your text..." : "Analyzing your text for improvements..."}
                   </p>
                 </div>
               ) : corrections.length > 0 ? (
@@ -330,6 +497,19 @@ const WritingAssistance = () => {
             
             <CardContent>
               <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Use Gemini AI</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Use Google's Gemini API for AI-powered text improvements
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.useAI}
+                    onCheckedChange={() => toggleSetting('useAI')}
+                  />
+                </div>
+                
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label className="text-base">Spell Check</Label>
