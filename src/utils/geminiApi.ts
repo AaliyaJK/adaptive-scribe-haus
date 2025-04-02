@@ -7,7 +7,8 @@
 
 // This is only for development purposes - in production, use server-side API calls
 const GEMINI_API_KEY = "AIzaSyCdtNnPhqGIayERVQ9_2Dwn2TrCrmUPQCg";
-const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+// Updated API URL with the correct model name based on the error message
+const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent";
 
 interface GeminiRequest {
   contents: {

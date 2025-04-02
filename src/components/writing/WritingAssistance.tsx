@@ -51,8 +51,8 @@ const WritingAssistance = () => {
   // Initialize speech recognition
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
-      const recognitionInstance = new SpeechRecognition();
+      const SpeechRecognitionAPI = window.webkitSpeechRecognition || window.SpeechRecognition;
+      const recognitionInstance = new SpeechRecognitionAPI();
       recognitionInstance.continuous = true;
       recognitionInstance.interimResults = true;
       
